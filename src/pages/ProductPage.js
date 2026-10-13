@@ -1,22 +1,56 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import products from '../data/products';
 import { useCart } from '../context/CartContext';
 import ProductImage from '../components/ProductImage';
+import { fetchProductById } from '../api/productsApi';
 import { formatPrice } from '../utils/formatPrice';
 
 function ProductPage() {
   const { id } = useParams();
   const { addToCart } = useCart();
+
+  const [product, setProduct] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [justAdded, setJustAdded] = useState(false);
 
-  const product = products.find((p) => p.id === Number(id));
+  // Load this product from the API whenever the id in the address changes.
+  useEffect(() => {
+    let ignore = false;
 
-  if (!product) {
+    setLoading(true);
+    setError('');
+    setProduct(null);
+    setQuantity(1);
+    setJustAdded(false);
+
+    fetchProductById(id)
+      .then((item) => {
+        if (ignore) return;
+        setProduct(item);
+        setLoading(false);
+      })
+      .catch((err) => {
+        if (ignore) return;
+        setError(err.message);
+        setLoading(false);
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [id]);
+
+  if (loading) {
+    return <p className="status">Loading product…</p>;
+  }
+
+  if (error || !product) {
     return (
       <div className="empty">
         <h1>Product not found</h1>
+        <p>We couldn't load this product. {error}</p>
         <Link to="/" className="btn">
           Back to the store
         </Link>
